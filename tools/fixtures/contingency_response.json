@@ -1,0 +1,12 @@
+{
+  "finding": "Método monolítico e de alta complexidade com acoplamento de responsabilidades.",
+  "evidence": "PMD detectou violações de CyclomaticComplexity (CC > 15) em GameService.java:180 e JaCoCo aponta 0% de cobertura nos ramos de bonificação.",
+  "why_it_matters": "Funções com alta complexidade ciclomática tornam o código propenso a regressões em novas regras da NBA e dificultam a criação de testes unitários isolados.",
+  "root_cause": "A rotina de processamento de palpites acumula validação de letras, controle de vidas, checagem de vitória e cálculo de score no mesmo fluxo.",
+  "suggested_refactoring": "Extrair o cálculo de pontuação para um método dedicado calculateEarnedScore e isolar a verificação de vitória.",
+  "patch": "--- a/src/main/java/io/hangman/nba/service/GameService.java\n+++ b/src/main/java/io/hangman/nba/service/GameService.java\n@@ -210,5 +210,9 @@\n- int earnedScore = (session.getDifficulty() * 10) + ((session.getMaxTries() - session.getWrongGuesses()) * 5);\n+ int earnedScore = calculateEarnedScore(session);\n+ ...",
+  "expected_effect": "Redução da complexidade ciclomática de 18 para 6 e viabilização de cobertura de testes unitários.",
+  "risk": "Baixo, mantendo os testes de caracterização passando.",
+  "confidence": 0.95,
+  "priority": "HIGH"
+}

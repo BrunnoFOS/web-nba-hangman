@@ -1,0 +1,11 @@
+quality_gate:
+  coverage:
+    min_instruction_pct: 60.0
+    min_branch_pct: 50.0
+  complexity:
+    max_cyclomatic_complexity_per_method: 15
+  code_smells:
+    max_priority_1_violations: 0
+    max_priority_2_violations: 5
+  duplication:
+    max_duplicated_blocks: 0

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NBA Hangman Web</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --accent: #f97316;
+      --accent-hover: #ea580c;
+      --border: #334155;
+      --wrong: #ef4444;
+      --success: #22c55e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace, system-ui; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 850px; }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { color: var(--accent); font-size: 2rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .row { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; }
+    input, select, button { padding: 8px 12px; border-radius: 4px; border: 1px solid var(--border); background: #0f172a; color: #fff; font-size: 1rem; }
+    button { background: var(--accent); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { background: var(--border); cursor: not-allowed; }
+    .badge { background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; margin-right: 6px; display: inline-block; }
+    .masked-word { font-size: 1.8rem; letter-spacing: 4px; font-weight: bold; margin: 16px 0; text-align: center; color: #38bdf8; }
+    pre.hangman { font-size: 1rem; line-height: 1.2; background: #0b0f19; padding: 12px; border-radius: 6px; border: 1px solid var(--border); text-align: center; margin-bottom: 16px; }
+    .keyboard { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 16px; }
+    .keyboard button { padding: 10px; font-size: 1rem; }
+    .keyboard button.used { background: #334155; opacity: 0.5; }
+    .feedback { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-weight: bold; text-align: center; }
+    .feedback.info { background: #0369a1; }
+    .feedback.win { background: var(--success); }
+    .feedback.loss { background: var(--wrong); }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+    th { background: #0f172a; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🏀 NBA Hangman: Jogo da Forca 🏀</h1>
+    <p>Teste seus conhecimentos da bola laranja!</p>
+  </header>
+
+  <!-- SEÇÃO 1: AUTENTICAÇÃO -->
+  <div class="card" id="authSection">
+    <h3>1. Autenticação</h3>
+    <div class="row" style="margin-top: 8px;">
+      <input type="text" id="username" placeholder="Usuário" value="player1">
+      <input type="password" id="password" placeholder="Senha" value="123456">
+      <button onclick="handleAuth('register')">Registrar</button>
+      <button onclick="handleAuth('login')">Entrar</button>
+    </div>
+    <div id="authStatus" style="font-size: 0.9rem; color: #94a3b8;">Não autenticado.</div>
+  </div>
+
+  <!-- SEÇÃO 2: LOBBY / NOVO JOGO -->
+  <div class="card" id="lobbySection" style="display: none;">
+    <h3>2. Iniciar Desafio</h3>
+    <div class="row" style="margin-top: 8px;">
+      <label>Dificuldade:</label>
+      <select id="difficulty">
+        <option value="1">1 - Easy</option>
+        <option value="2">2 - Medium</option>
+        <option value="3">3 - Hard</option>
+      </select>
+      <label>Categoria:</label>
+      <select id="category">
+        <option value="1">1 - Champion</option>
+        <option value="2">2 - Guard</option>
+        <option value="3">3 - Forward</option>
+        <option value="4">4 - Center</option>
+        <option value="5">5 - ROY</option>
+        <option value="6">6 - DPOY</option>
+        <option value="7">7 - MVP</option>
+        <option value="8">8 - 75th Team</option>
+      </select>
+      <button onclick="startGame()">Começar Jogo</button>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 3: ARENA DO JOGO -->
+  <div class="card" id="gameSection" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 id="gameHeader">Partida em Andamento</h3>
+      <div>Tentativas restantes: <span id="chancesLeft" style="color: var(--accent); font-weight: bold; font-size: 1.2rem;">6</span></div>
+    </div>
+    
+    <div id="badgesContainer" style="margin: 12px 0;"></div>
+    <pre class="hangman" id="asciiHangman"></pre>
+    <div class="masked-word" id="maskedWord">_ _ _ _ _</div>
+
+    <div id="feedbackBox" class="feedback info" style="display: none;"></div>
+
+    <!-- Teclado A-Z -->
+    <div class="keyboard" id="keyboard"></div>
+
+    <!-- Chute completo -->
+    <div class="row">
+      <input type="text" id="fullGuessInput" placeholder="Chute o nome completo..." style="flex: 1;">
+      <button onclick="sendFullGuess()">Chutar Nome Completo</button>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 4: PLACAR / LEADERBOARD -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>🏆 Scoreboard</h3>
+      <button onclick="loadScoreboard()">Atualizar</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Jogador</th>
+          <th>Score</th>
+          <th>Vitórias</th>
+          <th>Partidas</th>
+        </tr>
+      </thead>
+      <tbody id="scoreboardBody">
+        <tr><td colspan="5" style="text-align: center;">Clique em Atualizar para ver o placar</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  let token = localStorage.getItem("token") || "";
+  let currentGameId = "";
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  window.onload = () => {
+    if (token) {
+      document.getElementById("authStatus").innerText = "Sessão ativa com token salvo!";
+      document.getElementById("lobbySection").style.display = "block";
+    }
+    loadScoreboard();
+    buildKeyboard();
+  };
+
+  async function handleAuth(action) {
+    const u = document.getElementById("username").value;
+    const p = document.getElementById("password").value;
+    try {
+      const res = await fetch(`/api/auth/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        token = data.token;
+        localStorage.setItem("token", token);
+        document.getElementById("authStatus").innerText = `Logado como: ${data.username} (Score: ${data.score})`;
+        document.getElementById("lobbySection").style.display = "block";
+        loadScoreboard();
+      } else {
+        alert(data.message || "Erro na autenticação");
+      }
+    } catch (e) {
+      alert("Erro ao conectar à API: " + e.message);
+    }
+  }
+
+  async function startGame() {
+    const difficulty = parseInt(document.getElementById("difficulty").value);
+    const category = parseInt(document.getElementById("category").value);
+    try {
+      const res = await fetch("/api/games", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ difficulty, category })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentGameId = data.gameId;
+        renderGameState(data);
+        document.getElementById("gameSection").style.display = "block";
+      } else {
+        alert(data.message || "Falha ao iniciar jogo");
+      }
+    } catch (e) {
+      alert("Erro ao iniciar jogo: " + e.message);
+    }
+  }
+
+  async function makeGuess(guess) {
+    if (!currentGameId) return;
+    try {
+      const res = await fetch(`/api/games/${currentGameId}/guess`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ guess })
+      });
+      const data = await res.json();
+      renderGameState(data);
+    } catch (e) {
+      alert("Erro ao enviar palpite: " + e.message);
+    }
+  }
+
+  function sendFullGuess() {
+    const val = document.getElementById("fullGuessInput").value.trim();
+    if (!val) return;
+    makeGuess(val);
+    document.getElementById("fullGuessInput").value = "";
+  }
+
+  function renderGameState(data) {
+    document.getElementById("chancesLeft").innerText = data.chancesLeft;
+    document.getElementById("maskedWord").innerText = data.maskedWord;
+    document.getElementById("asciiHangman").innerText = data.hangmanStageAscii;
+
+    // Badges
+    const badgesDiv = document.getElementById("badgesContainer");
+    badgesDiv.innerHTML = data.badges.map(b => `<span class="badge">${b}</span>`).join(" ");
+
+    // Mensagem
+    const feedbackBox = document.getElementById("feedbackBox");
+    feedbackBox.style.display = "block";
+    feedbackBox.innerText = data.feedbackMessage;
+    feedbackBox.className = "feedback info";
+
+    // Teclado
+    const usedLetters = new Set(data.usedLetters || []);
+    alphabet.forEach(letter => {
+      const btn = document.getElementById(`btn-${letter}`);
+      if (btn) {
+        if (usedLetters.has(letter)) {
+          btn.disabled = true;
+          btn.classList.add("used");
+        } else {
+          btn.disabled = data.status !== "IN_PROGRESS";
+          btn.classList.remove("used");
+        }
+      }
+    });
+
+    if (data.status === "WIN") {
+      feedbackBox.className = "feedback win";
+      feedbackBox.innerText = `🎉 VITÓRIA! O jogador era: ${data.revealedWord}`;
+      loadScoreboard();
+    } else if (data.status === "LOSS") {
+      feedbackBox.className = "feedback loss";
+      feedbackBox.innerText = `💀 DERROTA! O jogador era: ${data.revealedWord}`;
+      loadScoreboard();
+    }
+  }
+
+  function buildKeyboard() {
+    const kb = document.getElementById("keyboard");
+    kb.innerHTML = "";
+    alphabet.forEach(letter => {
+      const btn = document.createElement("button");
+      btn.id = `btn-${letter}`;
+      btn.innerText = letter;
+      btn.onclick = () => makeGuess(letter);
+      kb.appendChild(btn);
+    });
+  }
+
+  async function loadScoreboard() {
+    try {
+      const res = await fetch("/api/scoreboard");
+      const list = await res.json();
+      const tbody = document.getElementById("scoreboardBody");
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Nenhum jogador pontuou ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map((item, idx) => `
+        <tr>
+          <td>#${idx + 1}</td>
+          <td>${item.username}</td>
+          <td><b>${item.score}</b></td>
+          <td>${item.gamesWon}</td>
+          <td>${item.gamesPlayed}</td>
+        </tr>
+      `).join("");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+</script>
+</body>
+</html>
