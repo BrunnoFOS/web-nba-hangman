@@ -94,7 +94,6 @@ public class GameService {
             throw new IllegalArgumentException("No NBA players found for difficulty " + request.getDifficulty() + " and category " + request.getCategory());
         }
 
-        // Recupera palavras já jogadas pelo usuário para evitar repetição (como em currentPlayer->alreadyPlayedWords do C++)
         List<GameSession> playedGames = gameSessionRepository.findByUser(user);
         Set<String> alreadyPlayedNames = new HashSet<>();
         for (GameSession g : playedGames) {
