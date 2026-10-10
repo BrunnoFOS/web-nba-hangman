@@ -256,6 +256,24 @@ public class GameService {
         if (session.isMvp()) badges.add("MVP");
         if (session.isAt75()) badges.add("75th TEAM");
 
+        // CODE SMELL: Concatenação ineficiente de String em loop (Inefficient String Concatenation)
+        String masked = "";
+        for (char c : session.getTargetWord().toCharArray()) {
+            if (Character.isLetter(c)) {
+                if (session.getUsedLetters().contains(Character.toUpperCase(c))) {
+                    masked += c + " ";
+                } else {
+                    masked += "_ ";
+                }
+            } else if (c == ' ') {
+                masked += "  ";
+            } else {
+                masked += c + " ";
+            }
+        }
+
+        /*
+        // Implementação recomendada (eficiente com StringBuilder):
         StringBuilder masked = new StringBuilder();
         for (char c : session.getTargetWord().toCharArray()) {
             if (Character.isLetter(c)) {
@@ -270,6 +288,7 @@ public class GameService {
                 masked.append(c).append(" ");
             }
         }
+        */
 
         int stageIndex = Math.min(session.getWrongGuesses(), HANGMAN_STAGES.length - 1);
         String asciiArt = HANGMAN_STAGES[stageIndex];
